@@ -18,12 +18,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gender", default="data/gender.npy", help="Path to gender labels.")
     parser.add_argument("--age", default="data/age.npy", help="Path to age labels.")
     parser.add_argument("--glasses", default=None, help="Optional path to glasses labels.")
+    parser.add_argument("--expression", default=None, help="Optional path to expression labels.")
     parser.add_argument("--output", default="data/ffhq_attributes.csv", help="Output metadata CSV.")
     parser.add_argument(
         "--default-glasses",
         default="unknown",
         choices=("unknown", "yes", "no"),
         help="Value used when --glasses is not provided.",
+    )
+    parser.add_argument(
+        "--default-expression",
+        default="unknown",
+        choices=("unknown", "neutral", "smiling", "other"),
+        help="Value used when --expression is not provided.",
     )
     parser.add_argument(
         "--image-prefix",
@@ -49,18 +56,29 @@ def main() -> None:
     gender = np.load(gender_path, allow_pickle=True).reshape(-1)
     age = np.load(age_path, allow_pickle=True).reshape(-1)
     glasses = load_optional_labels(args.glasses)
+    expression = load_optional_labels(args.expression)
 
     sample_count = int(latents.shape[0])
     validate_length("gender", gender, sample_count)
     validate_length("age", age, sample_count)
     if glasses is not None:
         validate_length("glasses", glasses, sample_count)
+    if expression is not None:
+        validate_length("expression", expression, sample_count)
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["image_path", "latent_path", "gender", "age_group", "age", "glasses"],
+            fieldnames=[
+                "image_path",
+                "latent_path",
+                "gender",
+                "age_group",
+                "age",
+                "expression",
+                "glasses",
+            ],
         )
         writer.writeheader()
         for index in range(sample_count):
@@ -71,6 +89,9 @@ def main() -> None:
                     "gender": normalize_gender(gender[index]),
                     "age_group": age_to_group(age[index]),
                     "age": normalize_scalar(age[index]),
+                    "expression": normalize_expression(
+                        expression[index] if expression is not None else args.default_expression
+                    ),
                     "glasses": normalize_glasses(
                         glasses[index] if glasses is not None else args.default_glasses
                     ),
@@ -83,6 +104,12 @@ def main() -> None:
             "No glasses labels were provided. The glasses column was filled with "
             f"'{args.default_glasses}'. Use a gender/age-only config or provide --glasses "
             "before training a glasses bridge."
+        )
+    if expression is None:
+        print(
+            "No expression labels were provided. The expression column was filled with "
+            f"'{args.default_expression}'. Provide --expression or use "
+            "scripts/build_ffhq_metadata.py before training an expression bridge."
         )
 
 
@@ -113,7 +140,11 @@ def age_to_group(value: Any) -> str:
         return "unknown"
     if age < 0:
         return "unknown"
-    return "adult" if age >= 18 else "child"
+    if age < 18:
+        return "child"
+    if age < 60:
+        return "adult"
+    return "senior"
 
 
 def normalize_glasses(value: Any) -> str:
@@ -122,6 +153,17 @@ def normalize_glasses(value: Any) -> str:
         return "yes"
     if text in {"0", "false", "no", "n", "no_glasses", "none"}:
         return "no"
+    return text or "unknown"
+
+
+def normalize_expression(value: Any) -> str:
+    text = str(normalize_scalar(value)).strip().lower().replace(" ", "_")
+    if text in {"smile", "smiled", "smiling", "happy", "happiness", "1", "true", "yes"}:
+        return "smiling"
+    if text in {"neutral", "none", "0", "false", "no"}:
+        return "neutral"
+    if text in {"other", "unknown"}:
+        return text
     return text or "unknown"
 
 

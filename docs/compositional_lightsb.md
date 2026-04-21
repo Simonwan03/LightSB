@@ -10,9 +10,11 @@ Example composition:
 ```text
 z0 = E(x_source)
 z1 = T_gender(z0)
-z2 = T_age(z1)
-z3 = T_glasses(z2)
-x_out = D(z3)
+z2 = T_age_adult_to_young_adult(z1)
+z3 = T_age_young_adult_to_teen(z2)
+z4 = T_age_teen_to_child(z3)
+z5 = T_expression(z4)
+x_out = D(z5)
 ```
 
 Each `T_*` is a standard `src.light_sb.LightSB` object trained in ALAE latent
@@ -72,9 +74,9 @@ maps to `latents.npy[0]`, `00001.json` maps to `latents.npy[1]`, and so on.
 The metadata CSV can also be created manually. A minimal CSV can look like:
 
 ```csv
-image_path,latent_path,gender,age_group,glasses
-images/000001.png,latents/000001.npy,male,adult,no_glasses
-images/000002.png,latents/000002.npy,female,child,reading_glasses
+image_path,latent_path,gender,age_group,expression
+images/000001.png,latents/000001.npy,male,adult,neutral
+images/000002.png,latents/000002.npy,female,child,smiling
 ```
 
 If all latents are stored in one matrix, set `data.latents_path` in the config.
@@ -92,13 +94,16 @@ data/age.npy
 ```
 
 If you do not have the DCGM JSON files yet, you can still build the simpler
-gender+age metadata CSV:
+gender+age+expression metadata CSV. To train the expression bridge without DCGM JSON,
+provide an `--expression` label array containing values such as `neutral` and
+`smiling`:
 
 ```bash
 python scripts/prepare_ffhq_metadata.py \
   --latents data/latents.npy \
   --gender data/gender.npy \
   --age data/age.npy \
+  --expression data/expression.npy \
   --output data/ffhq_attributes.csv
 ```
 
@@ -108,13 +113,27 @@ glasses-aware experiments, prefer `scripts/build_ffhq_metadata.py`, which reads
 the DCGM JSON `faceAttributes.glasses` field and normalizes values such as
 `NoGlasses`, `ReadingGlasses`, and `Sunglasses`.
 
+For the default 3-step expression experiment, prefer
+`scripts/build_ffhq_metadata.py`. It reads DCGM `faceAttributes.smile` and
+`faceAttributes.emotion` and writes an `expression` column:
+
+- `smiling`: `smile >= 0.5` or `emotion.happiness >= 0.5`
+- `neutral`: `emotion.neutral >= 0.5` while smile/happiness are low
+- `other` / `unknown`: samples that should usually be excluded from this bridge
+
 Expected attribute values in the example config:
 
 - `gender`: `male` / `female`
 - `age_group`: `adult` / `child`
-- `glasses`: `yes` / `no`
+- `expression`: `neutral` / `smiling`
 
-The filtering code uses case-insensitive exact matching.
+The filtering code uses case-insensitive exact matching for strings and supports
+numeric ranges such as `age: {min: 18, max: 30}`. The default config splits the
+adult-to-child edit into age bridges:
+
+- `adult -> age 30-40`
+- `age 30-40 -> age 18-30`
+- `age 18-30 -> child`
 
 ## Global vs Local Bridges
 
@@ -122,7 +141,7 @@ The config supports two subset modes:
 
 - `global`: train broad bridges such as `gender=male -> gender=female`.
 - `local`: train stricter bridges such as
-  `male adult no_glasses -> female adult no_glasses`.
+  `male adult neutral -> female adult neutral`.
 
 Choose with:
 
@@ -132,7 +151,9 @@ pipeline:
 ```
 
 Each step can define both `source_filter_global` / `target_filter_global` and
-`source_filter_local` / `target_filter_local`.
+`source_filter_local` / `target_filter_local`. The local filters are useful for
+keeping the previous edits fixed, for example training the age bridges only on
+`gender=female, expression=neutral` after the gender bridge has been applied.
 
 ## Filtering API
 
@@ -149,8 +170,8 @@ df = read_metadata_table("data/ffhq_metadata.csv")
 male_adults = select_subset(df, gender="male", age_group="adult")
 source, target = build_source_target_subsets(
     df,
-    source_filter={"gender": "male", "age_group": "adult", "glasses": "no_glasses"},
-    target_filter={"gender": "female", "age_group": "adult", "glasses": "no_glasses"},
+    source_filter={"gender": "male", "age_group": "adult", "expression": "neutral"},
+    target_filter={"gender": "female", "age_group": "child", "expression": "smiling"},
 )
 ```
 
@@ -182,8 +203,9 @@ python scripts/analyze_ffhq_metadata.py \
   --metadata data/ffhq_metadata.csv
 ```
 
-This reports counts by gender, age group, glasses category, and important local
-bridge intersections such as `male adult no_glasses`.
+This reports counts by gender, age group, expression, glasses category, and
+important local bridge intersections such as `male adult neutral` and
+`female child smiling`.
 
 Fit only, without inference:
 

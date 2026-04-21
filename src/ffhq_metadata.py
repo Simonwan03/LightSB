@@ -21,6 +21,7 @@ DEFAULT_COLUMNS = [
     "age_group",
     "glasses",
     "smile",
+    "expression",
     "pitch",
     "roll",
     "yaw",
@@ -255,6 +256,9 @@ def parse_ffhq_json_record(record: Optional[Mapping[str, Any]]) -> Dict[str, Any
     emotion = attrs.get("emotion") or {}
     accessories = attrs.get("accessories") or []
 
+    smile = normalize_number(attrs.get("smile"))
+    emotion_happiness = normalize_number(emotion.get("happiness"))
+    emotion_neutral = normalize_number(emotion.get("neutral"))
     moustache = normalize_number(facial_hair.get("moustache"))
     beard = normalize_number(facial_hair.get("beard"))
     sideburns = normalize_number(facial_hair.get("sideburns"))
@@ -269,7 +273,12 @@ def parse_ffhq_json_record(record: Optional[Mapping[str, Any]]) -> Dict[str, Any
         "json_gender": normalize_gender(attrs.get("gender")),
         "json_age": normalize_number(attrs.get("age")),
         "glasses": normalize_glasses(attrs.get("glasses")),
-        "smile": normalize_number(attrs.get("smile")),
+        "smile": smile,
+        "expression": infer_expression(
+            smile=smile,
+            emotion_happiness=emotion_happiness,
+            emotion_neutral=emotion_neutral,
+        ),
         "pitch": normalize_number(head_pose.get("pitch")),
         "roll": normalize_number(head_pose.get("roll")),
         "yaw": normalize_number(head_pose.get("yaw")),
@@ -301,8 +310,8 @@ def parse_ffhq_json_record(record: Optional[Mapping[str, Any]]) -> Dict[str, Any
         "emotion_contempt": normalize_number(emotion.get("contempt")),
         "emotion_disgust": normalize_number(emotion.get("disgust")),
         "emotion_fear": normalize_number(emotion.get("fear")),
-        "emotion_happiness": normalize_number(emotion.get("happiness")),
-        "emotion_neutral": normalize_number(emotion.get("neutral")),
+        "emotion_happiness": emotion_happiness,
+        "emotion_neutral": emotion_neutral,
         "emotion_sadness": normalize_number(emotion.get("sadness")),
         "emotion_surprise": normalize_number(emotion.get("surprise")),
     }
@@ -314,6 +323,7 @@ def empty_json_features() -> Dict[str, Any]:
         "json_age": None,
         "glasses": "unknown",
         "smile": "",
+        "expression": "unknown",
         "pitch": "",
         "roll": "",
         "yaw": "",
@@ -427,7 +437,7 @@ def build_source_target_subsets(
 def metadata_statistics(df: Any, intersections: Optional[Sequence[Constraints]] = None) -> Dict[str, Any]:
     rows = dataframe_to_rows(df)
     stats: Dict[str, Any] = {}
-    for column in ("gender", "age_group", "glasses"):
+    for column in ("gender", "age_group", "expression", "glasses"):
         stats[column] = dict(Counter(str(row.get(column, "")) for row in rows))
     stats["intersections"] = []
     for constraints in intersections or []:
@@ -438,10 +448,10 @@ def metadata_statistics(df: Any, intersections: Optional[Sequence[Constraints]] 
 
 def default_intersections() -> List[Constraints]:
     return [
-        {"gender": "male", "age_group": "adult", "glasses": "no_glasses"},
-        {"gender": "female", "age_group": "adult", "glasses": "no_glasses"},
-        {"gender": "female", "age_group": "child", "glasses": ["reading_glasses", "sunglasses"]},
-        {"gender": "female", "age_group": "child", "glasses": "no_glasses"},
+        {"gender": "male", "age_group": "adult", "expression": "neutral"},
+        {"gender": "female", "age_group": "adult", "expression": "neutral"},
+        {"gender": "female", "age_group": "senior", "expression": "neutral"},
+        {"gender": "female", "age_group": "senior", "expression": "smiling"},
     ]
 
 
@@ -473,6 +483,35 @@ def normalize_glasses(value: Any) -> str:
         "swimming_goggles": "swimming_goggles",
     }
     return mapping.get(text, text or "unknown")
+
+
+def infer_expression(
+    smile: Any,
+    emotion_happiness: Any,
+    emotion_neutral: Any,
+    smiling_threshold: float = 0.5,
+    neutral_threshold: float = 0.5,
+    neutral_smile_max: float = 0.2,
+) -> str:
+    smile_value = normalize_number(smile)
+    happiness_value = normalize_number(emotion_happiness)
+    neutral_value = normalize_number(emotion_neutral)
+
+    if any(
+        value is not None and value >= smiling_threshold
+        for value in (smile_value, happiness_value)
+    ):
+        return "smiling"
+    if (
+        neutral_value is not None
+        and neutral_value >= neutral_threshold
+        and (smile_value is None or smile_value < neutral_smile_max)
+        and (happiness_value is None or happiness_value < neutral_smile_max)
+    ):
+        return "neutral"
+    if smile_value is None and happiness_value is None and neutral_value is None:
+        return "unknown"
+    return "other"
 
 
 def age_to_group(age: Any, age_bins: Sequence[Mapping[str, Any]]) -> str:

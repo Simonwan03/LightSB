@@ -94,16 +94,24 @@ def fit_attribute_bridge(
     s_diagonal_init = float(bridge_config.get("S_diagonal_init", 0.1))
 
     if os.path.exists(cache_path) and not force_refit:
-        bridge = _make_bridge(dim, n_potentials, epsilon, is_diagonal, sampling_batch_size, s_diagonal_init)
         payload = torch.load(cache_path, map_location=device)
-        bridge.load_state_dict(payload["state_dict"])
-        bridge.to(device)
-        step.bridge_object = bridge
-        step.source_indices = _as_index_array(payload.get("source_indices"))
-        step.target_indices = _as_index_array(payload.get("target_indices"))
-        step.metrics = payload.get("metrics", {})
-        print(f"[{step.name}] loaded cached bridge from {cache_path}")
-        return step
+        cached_source_filter = dict(payload.get("source_filter") or {})
+        cached_target_filter = dict(payload.get("target_filter") or {})
+        if cached_source_filter != step.source_filter or cached_target_filter != step.target_filter:
+            print(
+                f"[{step.name}] cache filters differ from requested filters; "
+                "refitting bridge."
+            )
+        else:
+            bridge = _make_bridge(dim, n_potentials, epsilon, is_diagonal, sampling_batch_size, s_diagonal_init)
+            bridge.load_state_dict(payload["state_dict"])
+            bridge.to(device)
+            step.bridge_object = bridge
+            step.source_indices = _as_index_array(payload.get("source_indices"))
+            step.target_indices = _as_index_array(payload.get("target_indices"))
+            step.metrics = payload.get("metrics", {})
+            print(f"[{step.name}] loaded cached bridge from {cache_path}")
+            return step
 
     source_indices = dataset.filter_indices(step.source_filter)
     target_indices = dataset.filter_indices(step.target_filter)

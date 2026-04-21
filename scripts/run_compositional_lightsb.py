@@ -252,7 +252,7 @@ def print_selected_metadata_summary(
     if len(indices) == 0:
         return
     rows = [dataset.metadata[int(index)] for index in indices]
-    for column in ("gender", "age_group", "glasses"):
+    for column in ("gender", "age_group", "expression", "glasses"):
         if column in rows[0]:
             counts = Counter(row.get(column, "") for row in rows)
             print(f"selected z0 {column}: {dict(counts)}")

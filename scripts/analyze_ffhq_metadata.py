@@ -41,6 +41,7 @@ def main() -> None:
     else:
         print_counts("gender", stats["gender"])
         print_counts("age_group", stats["age_group"])
+        print_counts("expression", stats["expression"])
         print_counts("glasses", stats["glasses"])
         print("intersections")
         for item in stats["intersections"]:

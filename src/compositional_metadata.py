@@ -181,12 +181,27 @@ def _row_matches(row: MetadataRow, constraints: AttributeFilter) -> bool:
         if key not in row:
             return False
         actual = row[key]
-        if isinstance(expected, (list, tuple, set)):
+        if isinstance(expected, Mapping):
+            actual_number = _as_number(actual)
+            if actual_number is None:
+                return False
+            if "min" in expected and actual_number < float(expected["min"]):
+                return False
+            if "max" in expected and actual_number >= float(expected["max"]):
+                return False
+        elif isinstance(expected, (list, tuple, set)):
             if not any(_same_value(actual, item) for item in expected):
                 return False
         elif not _same_value(actual, expected):
             return False
     return True
+
+
+def _as_number(value: Any) -> Optional[float]:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _same_value(actual: Any, expected: Any) -> bool:

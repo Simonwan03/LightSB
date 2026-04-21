@@ -46,45 +46,83 @@ pipeline:
       source_filter_local:
         gender: male
         age_group: adult
-        glasses: no_glasses
+        expression: neutral
       target_filter_local:
         gender: female
         age_group: adult
-        glasses: no_glasses
+        expression: neutral
 
-    - name: age
+    - name: age_adult_to_young_adult
       source_filter_global:
         age_group: adult
+      target_filter_global:
+        age:
+          min: 30
+          max: 40
+      source_filter_local:
+        gender: female
+        age_group: adult
+        expression: neutral
+      target_filter_local:
+        gender: female
+        age:
+          min: 30
+          max: 40
+        expression: neutral
+
+    - name: age_young_adult_to_teen
+      source_filter_global:
+        age:
+          min: 30
+          max: 40
+      target_filter_global:
+        age:
+          min: 18
+          max: 30
+      source_filter_local:
+        gender: female
+        age:
+          min: 30
+          max: 40
+        expression: neutral
+      target_filter_local:
+        gender: female
+        age:
+          min: 18
+          max: 30
+        expression: neutral
+
+    - name: age_teen_to_child
+      source_filter_global:
+        age:
+          min: 18
+          max: 30
       target_filter_global:
         age_group: child
       source_filter_local:
         gender: female
-        age_group: adult
-        glasses: no_glasses
+        age:
+          min: 18
+          max: 30
+        expression: neutral
       target_filter_local:
         gender: female
         age_group: child
-        glasses: no_glasses
+        expression: neutral
 
-    - name: glasses
+    - name: expression
       source_filter_global:
-        glasses: no_glasses
+        expression: neutral
       target_filter_global:
-        glasses:
-          - reading_glasses
-          - sunglasses
-          - swimming_goggles
+        expression: smiling
       source_filter_local:
         gender: female
         age_group: child
-        glasses: no_glasses
+        expression: neutral
       target_filter_local:
         gender: female
         age_group: child
-        glasses:
-          - reading_glasses
-          - sunglasses
-          - swimming_goggles
+        expression: smiling
 
 baselines:
   one_step:
@@ -92,14 +130,11 @@ baselines:
     source_filter:
       gender: male
       age_group: adult
-      glasses: no_glasses
+      expression: neutral
     target_filter:
       gender: female
       age_group: child
-      glasses:
-        - reading_glasses
-        - sunglasses
-        - swimming_goggles
+      expression: smiling
 
 inference:
   # If input_latents_path is null, the script samples rows matching
@@ -113,7 +148,7 @@ inference:
   source_filter:
     gender: male
     age_group: adult
-    glasses: no_glasses
+    expression: neutral
   max_inputs: 8
   num_steps:
   save_intermediate_latents: true
