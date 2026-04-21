@@ -1,0 +1,90 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Python packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# Test / coverage / type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# ML experiment outputs and checkpoints
+outputs/
+checkpoints/
+runs/
+wandb/
+mlruns/
+tensorboard/
+lightning_logs/
+
+# Model weights and training artifacts
+*.ckpt
+*.pth
+*.pt
+*.pkl
+*.pickle
+ALAE/training_artifacts/*/*.pth
+
+# Local datasets and generated metadata
+data/ffhq-features-dataset/
+data/age.npy
+data/gender.npy
+data/latents.npy
+data/test_images.npy
+data/ffhq_attributes.csv
+data/ffhq_metadata.csv
+data/ffhq_metadata.pkl
+data/ffhq_metadata_report.json

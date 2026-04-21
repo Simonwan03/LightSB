@@ -1,0 +1,36 @@
+# Build a unified FFHQ metadata table from:
+# - local ALAE latents and existing age/gender npy labels
+# - DCGM/ffhq-features-dataset JSON files
+
+latents_path: data/latents.npy
+age_path: data/age.npy
+gender_path: data/gender.npy
+ffhq_json_dir: data/ffhq-features-dataset/json
+
+output_metadata_path: data/ffhq_metadata.csv
+output_report_path: data/ffhq_metadata_report.json
+output_pickle_path: data/ffhq_metadata.pkl
+output_parquet_path:
+
+expected_json_count: 70000
+fail_on_missing_json: false
+trust_existing_age_gender: true
+age_mismatch_tolerance: 1.0
+normalize_glasses_labels: true
+
+age_bins:
+  - name: child
+    min: 0
+    max: 13
+  - name: teen
+    min: 13
+    max: 18
+  - name: young_adult
+    min: 18
+    max: 30
+  - name: adult
+    min: 30
+    max: 60
+  - name: senior
+    min: 60
+    max: 200

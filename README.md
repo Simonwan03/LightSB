@@ -27,6 +27,15 @@ Note that we use `wandb` ([link](https://wandb.ai/site)) dashboard system when l
 
 ```notebooks/LightSB_alae.ipynb``` - Code for image experiments with ALAE.
 
+```scripts/run_compositional_lightsb.py``` - Experimental multi-step /
+compositional LightSB pipeline in ALAE latent space. See
+```docs/compositional_lightsb.md``` for metadata format, config options, and
+example commands.
+
+```scripts/build_ffhq_metadata.py``` - Builds a richer FFHQ metadata table from
+local ALAE latents, existing age/gender arrays, and the DCGM FFHQ feature JSON
+files.
+
 ## Citation
 ```
 @inproceedings{

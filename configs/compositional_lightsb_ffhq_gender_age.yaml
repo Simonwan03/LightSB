@@ -1,0 +1,92 @@
+# Gender + age composition for the original FFHQ ALAE latent arrays.
+# Use this when you have data/latents.npy, data/gender.npy, data/age.npy,
+# but no glasses labels.
+
+seed: 42
+device: cpu
+output_dir: outputs/compositional_lightsb_gender_age
+
+data:
+  root: .
+  latents_path: data/latents.npy
+  latent_key:
+  # Use data/ffhq_attributes.csv for the simple npy-only metadata, or
+  # data/ffhq_metadata.csv after running scripts/build_ffhq_metadata.py.
+  metadata_path: data/ffhq_metadata.csv
+  latent_path_column: latent_path
+  image_path_column: image_path
+  image_root: .
+
+bridge:
+  dim: 512
+  n_potentials: 10
+  epsilon: 0.1
+  is_diagonal: true
+  S_diagonal_init: 0.1
+  init_by_samples: true
+  sampling_batch_size: 128
+  batch_size: 128
+  max_steps: 10000
+  lr: 0.001
+  gradient_max_norm: .inf
+  log_every: 100
+  force_refit: false
+
+pipeline:
+  subset_mode: global
+  steps:
+    - name: gender
+      source_filter_global:
+        gender: male
+      target_filter_global:
+        gender: female
+      source_filter_local:
+        gender: male
+        age_group: adult
+      target_filter_local:
+        gender: female
+        age_group: adult
+
+    - name: age
+      source_filter_global:
+        age_group: adult
+      target_filter_global:
+        age_group: child
+      source_filter_local:
+        gender: female
+        age_group: adult
+      target_filter_local:
+        gender: female
+        age_group: child
+
+baselines:
+  one_step:
+    name: one_step_gender_age
+    source_filter:
+      gender: male
+      age_group: adult
+    target_filter:
+      gender: female
+      age_group: child
+
+inference:
+  input_image_paths:
+  input_latents_path:
+  input_indices:
+  input_indices_path:
+  validate_source_filter: true
+  input_image_size: 1024
+  source_filter:
+    gender: male
+    age_group: adult
+  max_inputs: 8
+  num_steps:
+  save_intermediate_latents: true
+
+  decode:
+    enabled: true
+    save_stage_images: true
+    save_panel: true
+    include_source_images: true
+    alae_config: ALAE/configs/ffhq.yaml
+    training_artifacts_dir: ALAE/training_artifacts/ffhq

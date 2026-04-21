@@ -87,7 +87,10 @@ class Checkpointer(object):
 
         self.logger.info("Loading checkpoint from {}".format(f))
         f = os.path.join("/".join(self.cfg.OUTPUT_DIR.split("/")[:-3]), f)
-        checkpoint = torch.load(f, map_location=torch.device("cpu"))
+        try:
+            checkpoint = torch.load(f, map_location=torch.device("cpu"), weights_only=False)
+        except TypeError:
+            checkpoint = torch.load(f, map_location=torch.device("cpu"))
         for name, model in self.models.items():
             if name in checkpoint["models"]:
                 try:

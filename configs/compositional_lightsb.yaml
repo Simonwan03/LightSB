@@ -1,0 +1,127 @@
+# Experimental compositional LightSB pipeline in ALAE latent space.
+#
+# Paths are resolved relative to the repository root when run through
+# scripts/run_compositional_lightsb.py.
+
+seed: 42
+device: cpu
+output_dir: outputs/compositional_lightsb
+
+data:
+  root: .
+  # Shared latent matrix with shape (n_samples, 512). If this is null, every
+  # metadata row must provide a latent_path entry.
+  latents_path: data/latents.npy
+  latent_key:
+  metadata_path: data/ffhq_metadata.csv
+  latent_path_column: latent_path
+  image_path_column: image_path
+  image_root: .
+
+bridge:
+  dim: 512
+  n_potentials: 10
+  epsilon: 0.1
+  is_diagonal: true
+  S_diagonal_init: 0.1
+  init_by_samples: true
+  sampling_batch_size: 128
+  batch_size: 128
+  max_steps: 10000
+  lr: 0.001
+  gradient_max_norm: .inf
+  log_every: 100
+  force_refit: false
+
+pipeline:
+  # "global" uses source_filter_global / target_filter_global.
+  # "local" uses source_filter_local / target_filter_local when present.
+  subset_mode: global
+  steps:
+    - name: gender
+      source_filter_global:
+        gender: male
+      target_filter_global:
+        gender: female
+      source_filter_local:
+        gender: male
+        age_group: adult
+        glasses: no_glasses
+      target_filter_local:
+        gender: female
+        age_group: adult
+        glasses: no_glasses
+
+    - name: age
+      source_filter_global:
+        age_group: adult
+      target_filter_global:
+        age_group: child
+      source_filter_local:
+        gender: female
+        age_group: adult
+        glasses: no_glasses
+      target_filter_local:
+        gender: female
+        age_group: child
+        glasses: no_glasses
+
+    - name: glasses
+      source_filter_global:
+        glasses: no_glasses
+      target_filter_global:
+        glasses:
+          - reading_glasses
+          - sunglasses
+          - swimming_goggles
+      source_filter_local:
+        gender: female
+        age_group: child
+        glasses: no_glasses
+      target_filter_local:
+        gender: female
+        age_group: child
+        glasses:
+          - reading_glasses
+          - sunglasses
+          - swimming_goggles
+
+baselines:
+  one_step:
+    name: one_step_all_attributes
+    source_filter:
+      gender: male
+      age_group: adult
+      glasses: no_glasses
+    target_filter:
+      gender: female
+      age_group: child
+      glasses:
+        - reading_glasses
+        - sunglasses
+        - swimming_goggles
+
+inference:
+  # If input_latents_path is null, the script samples rows matching
+  # source_filter from the configured latent dataset.
+  input_image_paths:
+  input_latents_path:
+  input_indices:
+  input_indices_path:
+  validate_source_filter: true
+  input_image_size: 1024
+  source_filter:
+    gender: male
+    age_group: adult
+    glasses: no_glasses
+  max_inputs: 8
+  num_steps:
+  save_intermediate_latents: true
+
+  decode:
+    enabled: true
+    save_stage_images: true
+    save_panel: true
+    include_source_images: true
+    alae_config: ALAE/configs/ffhq.yaml
+    training_artifacts_dir: ALAE/training_artifacts/ffhq
